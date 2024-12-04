@@ -158,6 +158,9 @@ void updateAndPublishData() {
     float temperature = sht31.readTemperature();
     float humidity = sht31.readHumidity();
     
+    // Debug print raw values
+    Serial.printf("Raw temperature: %.2f, humidity: %.2f\n", temperature, humidity);
+    
     // Check if readings are valid
     if (isnan(temperature) || isnan(humidity)) {
       Serial.println("Failed to read from SHT31 sensor!");
@@ -170,25 +173,38 @@ void updateAndPublishData() {
     float reservoirVolume = calculateReservoirVolume(waterLevel);
     int lightIntensity = analogRead(LDR_PIN);
 
+    // Debug print processed values
+    Serial.printf("Processed values:\n");
+    Serial.printf("VPD: %.2f, pH: %.2f\n", vpd, pH);
+    Serial.printf("Water Level: %.2f, Volume: %.2f\n", waterLevel, reservoirVolume);
+    Serial.printf("Light: %d\n", lightIntensity);
+
     // Create JSON object with error checking
     FirebaseJson json;
-    json.set("temperature", temperature);
-    json.set("humidity", humidity);
-    json.set("vpd", vpd);
-    json.set("ph", pH);
-    json.set("waterLevel", waterLevel);
-    json.set("reservoirVolume", reservoirVolume);
+    
+    // Only set values if they are valid
+    if (!isnan(temperature)) json.set("temperature", temperature);
+    if (!isnan(humidity)) json.set("humidity", humidity);
+    if (!isnan(vpd)) json.set("vpd", vpd);
+    if (!isnan(pH)) json.set("ph", pH);
+    if (!isnan(waterLevel)) json.set("waterLevel", waterLevel);
+    if (!isnan(reservoirVolume)) json.set("reservoirVolume", reservoirVolume);
+    
     json.set("lightIntensity", lightIntensity);
     json.set("vpdPumpRunning", isVPDPumping);
     json.set("phAdjusting", isPHAdjusting);
     json.set("timestamp", time(nullptr));
 
+    // Debug print JSON
+    String jsonStr;
+    json.toString(jsonStr, true);
+    Serial.println("Sending JSON:");
+    Serial.println(jsonStr);
+
     // Push to Firebase with error checking
     String path = "/sensor_readings";
     if (Firebase.RTDB.pushJSON(&fbdo, path, &json)) {
       Serial.println("Data sent to Firebase successfully");
-      Serial.printf("Temperature: %.2f°C, Humidity: %.2f%%, pH: %.2f\n", 
-                   temperature, humidity, pH);
     } else {
       Serial.println("Failed to send data to Firebase");
       Serial.println("REASON: " + fbdo.errorReason());

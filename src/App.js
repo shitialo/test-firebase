@@ -47,6 +47,8 @@ function App() {
   const [latestReading, setLatestReading] = useState(null);
 
   useEffect(() => {
+    console.log('Setting up Firebase listeners...');
+    
     // Listen to sensor readings (last 50 entries)
     const readingsRef = query(
       ref(database, 'sensor_readings'),
@@ -56,24 +58,34 @@ function App() {
 
     const unsubscribeReadings = onValue(readingsRef, (snapshot) => {
       const data = snapshot.val();
+      console.log('Received sensor data:', data);
+      
       if (data) {
         const dataArray = Object.entries(data).map(([key, value]) => ({
           id: key,
           ...value
         })).sort((a, b) => a.timestamp - b.timestamp);
         
+        console.log('Processed data array:', dataArray);
         setSensorData(dataArray);
         setLatestReading(dataArray[dataArray.length - 1]);
+      } else {
+        console.log('No sensor data available');
       }
+    }, (error) => {
+      console.error('Error reading sensor data:', error);
     });
 
     // Listen to system status
     const statusRef = ref(database, 'system_status');
     const unsubscribeStatus = onValue(statusRef, (snapshot) => {
       const status = snapshot.val();
+      console.log('Received system status:', status);
       if (status) {
         setSystemStatus(status);
       }
+    }, (error) => {
+      console.error('Error reading system status:', error);
     });
 
     return () => {
@@ -82,38 +94,63 @@ function App() {
     };
   }, []);
 
-  // Prepare data for chart
+  // Add data validation before preparing chart data
   const chartData = {
     labels: sensorData.map(data => 
-      new Date(data.timestamp * 1000).toLocaleTimeString()
+      data.timestamp ? new Date(data.timestamp * 1000).toLocaleTimeString() : ''
     ),
     datasets: [
       {
         label: 'Temperature (°C)',
-        data: sensorData.map(data => data.temperature),
+        data: sensorData.map(data => data.temperature || null),
         borderColor: 'rgb(255, 99, 132)',
         tension: 0.1
       },
       {
         label: 'Humidity (%)',
-        data: sensorData.map(data => data.humidity),
+        data: sensorData.map(data => data.humidity || null),
         borderColor: 'rgb(53, 162, 235)',
         tension: 0.1
       },
       {
         label: 'VPD (kPa)',
-        data: sensorData.map(data => data.vpd),
+        data: sensorData.map(data => data.vpd || null),
         borderColor: 'rgb(75, 192, 192)',
         tension: 0.1
       },
       {
         label: 'pH',
-        data: sensorData.map(data => data.ph),
+        data: sensorData.map(data => data.ph || null),
         borderColor: 'rgb(153, 102, 255)',
         tension: 0.1
       }
     ]
   };
+
+  // Improve number formatting with validation
+  const formatNumber = (value, decimals = 1) => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return 'N/A';
+    }
+    const num = Number(value);
+    return isFinite(num) ? num.toFixed(decimals) : 'N/A';
+  };
+
+  // Add loading state
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Typography>Loading sensor data...</Typography>
+      </Container>
+    );
+  }
 
   const chartOptions = {
     responsive: true,
@@ -131,13 +168,6 @@ function App() {
         beginAtZero: false
       }
     }
-  };
-
-  // Add a helper function for safe number formatting
-  const formatNumber = (value, decimals = 1) => {
-    return value !== undefined && value !== null 
-      ? Number(value).toFixed(decimals) 
-      : 'N/A';
   };
 
   return (
