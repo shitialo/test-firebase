@@ -157,13 +157,20 @@ void updateAndPublishData() {
     // Read all sensor data
     float temperature = sht31.readTemperature();
     float humidity = sht31.readHumidity();
+    
+    // Check if readings are valid
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("Failed to read from SHT31 sensor!");
+      return;
+    }
+
     float vpd = calculateVPD(temperature, humidity);
     float pH = readpH();
     float waterLevel = measureWaterLevel();
     float reservoirVolume = calculateReservoirVolume(waterLevel);
     int lightIntensity = analogRead(LDR_PIN);
 
-    // Create JSON object
+    // Create JSON object with error checking
     FirebaseJson json;
     json.set("temperature", temperature);
     json.set("humidity", humidity);
@@ -176,16 +183,18 @@ void updateAndPublishData() {
     json.set("phAdjusting", isPHAdjusting);
     json.set("timestamp", time(nullptr));
 
-    // Push to Firebase
+    // Push to Firebase with error checking
     String path = "/sensor_readings";
     if (Firebase.RTDB.pushJSON(&fbdo, path, &json)) {
       Serial.println("Data sent to Firebase successfully");
+      Serial.printf("Temperature: %.2f°C, Humidity: %.2f%%, pH: %.2f\n", 
+                   temperature, humidity, pH);
     } else {
       Serial.println("Failed to send data to Firebase");
       Serial.println("REASON: " + fbdo.errorReason());
     }
 
-    // Update current status
+    // Update system status
     FirebaseJson statusJson;
     statusJson.set("status", "Active");
     statusJson.set("lastUpdate", time(nullptr));

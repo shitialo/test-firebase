@@ -133,6 +133,13 @@ function App() {
     }
   };
 
+  // Add a helper function for safe number formatting
+  const formatNumber = (value, decimals = 1) => {
+    return value !== undefined && value !== null 
+      ? Number(value).toFixed(decimals) 
+      : 'N/A';
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Grid container spacing={3}>
@@ -143,7 +150,7 @@ function App() {
             </Typography>
             {systemStatus && (
               <Typography color="text.secondary">
-                System Status: {systemStatus.status} 
+                System Status: {systemStatus.status || 'Unknown'} 
                 {systemStatus.vpdPumpRunning && " (VPD Pump Active)"}
                 {systemStatus.phAdjusting && " (pH Adjusting)"}
               </Typography>
@@ -159,7 +166,7 @@ function App() {
                   Temperature
                 </Typography>
                 <Typography component="p" variant="h3">
-                  {latestReading.temperature.toFixed(1)}°C
+                  {formatNumber(latestReading.temperature)}°C
                 </Typography>
               </Paper>
             </Grid>
@@ -170,7 +177,7 @@ function App() {
                   Humidity
                 </Typography>
                 <Typography component="p" variant="h3">
-                  {latestReading.humidity.toFixed(1)}%
+                  {formatNumber(latestReading.humidity)}%
                 </Typography>
               </Paper>
             </Grid>
@@ -181,7 +188,7 @@ function App() {
                   pH Level
                 </Typography>
                 <Typography component="p" variant="h3">
-                  {latestReading.ph.toFixed(2)}
+                  {formatNumber(latestReading.ph, 2)}
                 </Typography>
               </Paper>
             </Grid>
@@ -192,7 +199,7 @@ function App() {
                   Water Level
                 </Typography>
                 <Typography component="p" variant="h3">
-                  {latestReading.waterLevel.toFixed(1)}cm
+                  {formatNumber(latestReading.waterLevel)}cm
                 </Typography>
               </Paper>
             </Grid>
@@ -201,7 +208,11 @@ function App() {
 
         <Grid item xs={12}>
           <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
-            <Line data={chartData} options={chartOptions} />
+            <Line 
+              data={chartData} 
+              options={chartOptions} 
+              fallback={<Typography>Loading chart data...</Typography>}
+            />
           </Paper>
         </Grid>
       </Grid>
