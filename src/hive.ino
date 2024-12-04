@@ -154,6 +154,10 @@ void loop() {
 
 void updateAndPublishData() {
   if (Firebase.ready() && signupOK) {
+    // Get current time
+    time_t now;
+    time(&now);
+    
     // Read all sensor data
     float temperature = sht31.readTemperature();
     float humidity = sht31.readHumidity();
@@ -173,27 +177,20 @@ void updateAndPublishData() {
     float reservoirVolume = calculateReservoirVolume(waterLevel);
     int lightIntensity = analogRead(LDR_PIN);
 
-    // Debug print processed values
-    Serial.printf("Processed values:\n");
-    Serial.printf("VPD: %.2f, pH: %.2f\n", vpd, pH);
-    Serial.printf("Water Level: %.2f, Volume: %.2f\n", waterLevel, reservoirVolume);
-    Serial.printf("Light: %d\n", lightIntensity);
-
     // Create JSON object with error checking
     FirebaseJson json;
     
-    // Only set values if they are valid
-    if (!isnan(temperature)) json.set("temperature", temperature);
-    if (!isnan(humidity)) json.set("humidity", humidity);
-    if (!isnan(vpd)) json.set("vpd", vpd);
-    if (!isnan(pH)) json.set("ph", pH);
-    if (!isnan(waterLevel)) json.set("waterLevel", waterLevel);
-    if (!isnan(reservoirVolume)) json.set("reservoirVolume", reservoirVolume);
-    
+    // Only set values if they are valid and convert to fixed decimal places
+    json.set("temperature", String(temperature, 1));
+    json.set("humidity", String(humidity, 1));
+    json.set("vpd", String(vpd, 2));
+    json.set("ph", String(pH, 2));
+    json.set("waterLevel", String(waterLevel, 1));
+    json.set("reservoirVolume", String(reservoirVolume, 1));
     json.set("lightIntensity", lightIntensity);
     json.set("vpdPumpRunning", isVPDPumping);
     json.set("phAdjusting", isPHAdjusting);
-    json.set("timestamp", time(nullptr));
+    json.set("timestamp", (int)now);  // Convert to integer timestamp
 
     // Debug print JSON
     String jsonStr;
@@ -213,7 +210,7 @@ void updateAndPublishData() {
     // Update system status
     FirebaseJson statusJson;
     statusJson.set("status", "Active");
-    statusJson.set("lastUpdate", time(nullptr));
+    statusJson.set("lastUpdate", (int)now);  // Convert to integer timestamp
     statusJson.set("vpdPumpRunning", isVPDPumping);
     statusJson.set("phAdjusting", isPHAdjusting);
 

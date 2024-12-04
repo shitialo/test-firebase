@@ -61,14 +61,27 @@ function App() {
       console.log('Received sensor data:', data);
       
       if (data) {
-        const dataArray = Object.entries(data).map(([key, value]) => ({
-          id: key,
-          ...value
-        })).sort((a, b) => a.timestamp - b.timestamp);
+        const dataArray = Object.entries(data)
+          .map(([key, value]) => ({
+            id: key,
+            ...value,
+            // Convert string values back to numbers
+            temperature: parseFloat(value.temperature),
+            humidity: parseFloat(value.humidity),
+            vpd: parseFloat(value.vpd),
+            ph: parseFloat(value.ph),
+            waterLevel: parseFloat(value.waterLevel),
+            reservoirVolume: parseFloat(value.reservoirVolume),
+            timestamp: parseInt(value.timestamp)
+          }))
+          .filter(reading => !isNaN(reading.temperature)) // Filter out invalid readings
+          .sort((a, b) => a.timestamp - b.timestamp);
         
         console.log('Processed data array:', dataArray);
         setSensorData(dataArray);
-        setLatestReading(dataArray[dataArray.length - 1]);
+        if (dataArray.length > 0) {
+          setLatestReading(dataArray[dataArray.length - 1]);
+        }
       } else {
         console.log('No sensor data available');
       }
@@ -132,7 +145,7 @@ function App() {
     if (value === undefined || value === null || isNaN(value)) {
       return 'N/A';
     }
-    const num = Number(value);
+    const num = parseFloat(value);
     return isFinite(num) ? num.toFixed(decimals) : 'N/A';
   };
 
